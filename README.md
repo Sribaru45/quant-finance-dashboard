@@ -2,6 +2,8 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python) ![Streamlit](https://img.shields.io/badge/Streamlit-1.45-red?logo=streamlit) ![Plotly](https://img.shields.io/badge/Plotly-5.24-purple?logo=plotly) ![License](https://img.shields.io/badge/License-MIT-green)
 
+### 🔗 [Live Demo → srirambharadwaj.duckdns.org](https://srirambharadwaj.duckdns.org)
+
 A Bloomberg-lite quantitative finance toolkit built with Python and Streamlit. Designed to demonstrate practical knowledge of risk modeling, derivatives pricing, and portfolio analytics for capital markets roles.
 
 ---
@@ -28,8 +30,8 @@ A Bloomberg-lite quantitative finance toolkit built with Python and Streamlit. D
 ## Installation
 
 ```bash
-git clone https://github.com/Sribaru45/financial-analytics-platform.git
-cd financial-analytics-platform
+git clone https://github.com/Sribaru45/quant-finance-dashboard.git
+cd quant-finance-dashboard
 pip install -r requirements.txt
 streamlit run app.py
 ```
