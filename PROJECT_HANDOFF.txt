@@ -1,0 +1,316 @@
+================================================================================
+FINANCIAL ANALYTICS PLATFORM — PROJECT HANDOFF DOCUMENT
+================================================================================
+Owner:      Sriram Bharadwaj
+GitHub:     https://github.com/Sribaru45/quant-finance-dashboard
+Live App:   https://srirambharadwaj.duckdns.org
+LinkedIn:   https://www.linkedin.com/in/sriram-bharadwaj-151456171/
+Purpose:    Portfolio project for FinTech PM / Risk Analyst / BA Capital Markets roles
+================================================================================
+
+PURPOSE OF THIS FILE
+--------------------
+This document is the single source of truth for the platform. It is designed to
+be loaded into Claude (or any AI assistant) as a prompt context to continue
+developing, debugging, or fully rebuilding the platform from scratch. Every
+decision, convention, credential reference, and known issue is recorded here.
+
+
+PROJECT LOCATION
+----------------
+Local path:   /Users/srirambharadwaj/Documents/projects/Portfolio/
+Git remote:   git@github.com:Sribaru45/quant-finance-dashboard.git
+Git branch:   main
+Local run:    cd /Users/srirambharadwaj/Documents/projects/Portfolio && streamlit run app.py
+Local URL:    http://localhost:8501
+
+
+DEPLOYMENT (PRODUCTION)
+-----------------------
+Server:       DigitalOcean Droplet — Ubuntu 24.04 LTS
+IP:           198.211.107.76
+SSH:          ssh root@198.211.107.76
+App path:     /root/portfolio/
+Venv path:    /root/portfolio/venv/
+Live URL:     https://srirambharadwaj.duckdns.org
+DNS:          DuckDNS — srirambharadwaj.duckdns.org → 198.211.107.76
+SSL:          Let's Encrypt via Certbot (auto-renews, expires 2026-10-06)
+Reverse proxy: nginx → proxies port 80/443 to localhost:8501
+Process mgr:  systemd service: portfolio.service (auto-starts on reboot)
+
+Useful server commands:
+  systemctl status portfolio          # check app status
+  systemctl restart portfolio         # restart app
+  journalctl -u portfolio -f          # live logs
+  nginx -t && systemctl reload nginx  # reload nginx config
+
+To deploy local changes to server:
+  cd /Users/srirambharadwaj/Documents/projects/Portfolio
+  git add <files> && git commit -m "message" && git push
+  ssh root@198.211.107.76 "cd /root/portfolio && git pull && systemctl restart portfolio"
+
+Note: The Droplet also has a stopped Docker project called "pantry" (pantry-web-1,
+pantry-api-1). It is intentionally stopped and reserved for future use as a
+separate module. Do not delete its containers.
+
+
+TECH STACK
+----------
+- Python + Streamlit 1.45.1 (framework)
+- Plotly 5.24.1 (all charts)
+- Pandas 2.2.3 + NumPy 1.26.4 (data)
+- scikit-learn 1.5.2 (logistic regression, credit risk)
+- scipy 1.13.1 (optimization, stats)
+- statsmodels 0.14.4 (ADF cointegration test)
+- alpaca-py 0.40.1 (live market data — PRIMARY data source)
+- yfinance 0.2.50 (fundamentals only, best-effort)
+- SQLite via stdlib sqlite3 (backtest history)
+
+
+FOLDER STRUCTURE
+----------------
+Portfolio/
+├── app.py                        Main entry, st.navigation() routing
+├── pages/
+│   ├── home.py                   Landing page, live market snapshot, module grid
+│   ├── credit_risk.py            Module 1: PD/LGD/EL logistic regression
+│   ├── risk_analytics.py         Module 2: VaR/CVaR/Monte Carlo
+│   ├── options_pricing.py        Module 3: Black-Scholes + Greeks
+│   ├── portfolio_opt.py          Module 4: Markowitz optimization
+│   ├── pairs_trading.py          Module 5: Cointegration backtest + history
+│   ├── value_investing.py        Module 6: Buffett screener + portfolio builder
+│   └── financial_dashboard.py    UNUSED — legacy, not in navigation, keep for reference
+├── utils/
+│   ├── helpers.py                Alpaca API client, fetch_price_history(),
+│   │                             fetch_asset_list(), ticker_selectbox(),
+│   │                             ticker_multiselect(), synthetic fallbacks
+│   ├── styling.py                Global dark theme CSS, PLOTLY_LAYOUT,
+│   │                             module_header(), error_card(), sidebar_footer()
+│   └── db.py                     SQLite helpers: save_backtest(), load_backtests(),
+│                                 delete_backtest(), init_db()
+├── data/
+│   └── backtests.db              SQLite database for pairs trading history
+├── .streamlit/
+│   └── secrets.toml              API keys (gitignored — never commit)
+├── requirements.txt
+├── README.md
+└── .gitignore
+
+
+API KEYS
+--------
+Stored in .streamlit/secrets.toml locally and in /root/portfolio/.streamlit/secrets.toml
+on the server. This file is gitignored and must be created manually after any fresh clone.
+
+ALPACA_API_KEY    = "PKMGA3XT3NLS34RMOAUZWZ3MG2"
+ALPACA_SECRET_KEY = "7pyecFG4inCSfz1tZpTo8dFiWRrGNiUTcZdTsGzNFqjU"
+ALPACA_BASE_URL   = "https://paper-api.alpaca.markets"
+Data endpoint:      https://data.alpaca.markets (IEX feed)
+Asset list:         GET https://paper-api.alpaca.markets/v2/assets
+
+
+DESIGN SYSTEM
+-------------
+Theme:            Dark (Bloomberg-lite terminal aesthetic)
+Background:       #0E1117
+Sidebar:          #1C1C2E
+Accent (teal):    #00D4AA
+Danger (red):     #FF6B6B
+Subtext:          #A0AEC0
+Charts:           Plotly dark template throughout
+Layout:           All module pages use 70/30 column split
+                  Left (70%) = analysis output
+                  Right (30%) = parameters panel
+Navigation:       st.navigation() — sidebar left, ordered
+
+
+THE 6 MODULES
+-------------
+
+1. CREDIT RISK MODEL (pages/credit_risk.py)
+   - Logistic regression PD model
+   - Market toggle: US (FICO 300-850) | India (CIBIL 300-900) | German (UCI dataset)
+   - Outputs: PD score, risk tier (Low/Medium/High), Expected Loss = PD x LGD x EAD
+   - Charts: risk gauge, feature importance bar chart, population PD distribution
+   - Basel II/III framing throughout
+   - Downloadable mini-report
+
+2. RISK ANALYTICS (pages/risk_analytics.py)
+   - Historical VaR, Parametric VaR, Monte Carlo VaR (up to 10,000 paths)
+   - CVaR (Expected Shortfall) for all three methods
+   - Multi-ticker via st.multiselect (searchable, from Alpaca asset list)
+   - Charts: return distribution histogram, Monte Carlo fan chart, cumulative returns
+   - Normality assumption disclaimer on parametric method
+   - Downloadable mini-report
+
+3. OPTIONS PRICING (pages/options_pricing.py)
+   - Black-Scholes for European calls and puts
+   - Full Greeks: Delta, Gamma, Theta, Vega, Rho
+   - Charts: Greeks bar chart, Delta+Price vs Spot, 2 heatmaps (Price x Vol, Delta x Vol)
+   - Moneyness, intrinsic value, time value displayed
+   - Downloadable mini-report
+
+4. PORTFOLIO OPTIMIZATION (pages/portfolio_opt.py)
+   - Markowitz mean-variance, efficient frontier via random portfolio sampling
+   - Sharpe maximization via scipy.optimize.minimize
+   - Toggle: long-only (weights >= 0) vs allow short selling
+   - Multi-ticker via st.multiselect (searchable)
+   - Charts: efficient frontier scatter, weight bar chart
+   - Shows both Max Sharpe and Min Volatility portfolios
+   - Downloadable mini-report
+
+5. PAIRS TRADING BACKTEST (pages/pairs_trading.py)
+   - Engle-Granger cointegration (ADF test via statsmodels)
+   - Z-score based entry/exit signals with configurable thresholds
+   - Full P&L backtest engine with transaction costs
+   - Trade markers on z-score chart
+   - Metrics: trade count, win rate, Sharpe, avg win/loss
+   - SQLite persistence: save button writes to data/backtests.db
+   - History table with delete-by-ID and Refresh button
+   - In-sample disclaimer shown
+   - Downloadable mini-report
+   - Tickers: two st.selectbox dropdowns (searchable)
+
+6. VALUE INVESTING SCREENER (pages/value_investing.py)
+   - Buffett-style fundamental filters (13 sliders):
+     Valuation: P/E, P/B, PEG, EV/EBITDA
+     Profitability: ROE, ROA, Gross Margin, Net Margin
+     Health: Debt/Equity, Current Ratio
+     Growth: Revenue Growth, EPS Growth
+     Dividends: Dividend Yield
+   - Composite Value Score ranks passing stocks
+   - Portfolio builder from passing stocks (st.multiselect)
+   - Side-by-side: Equal-Weight vs Markowitz-Optimized allocation
+   - Performance comparison: return, vol, Sharpe, max drawdown
+   - Timeframe selector (1mo to 3y)
+   - Charts: cumulative return comparison, weight bar charts, individual stock returns
+   - Fundamentals via yfinance .info (unreliable — known issue, see bugs)
+   - Downloadable mini-report
+
+HOME PAGE (pages/home.py)
+   - Live SPY, QQQ, GLD price metrics with 1-day delta (fetches 1mo data)
+   - SPY price chart
+   - Module grid with clickable st.page_link() cards
+
+
+KNOWN BUGS / ISSUES
+-------------------
+
+1. [HIGH] Value Investing Screener fundamentals unreliable
+   - Uses yfinance .info which fails frequently
+   - P/E, ROE, Debt/Equity often return None → shows N/A
+   - Fix: Replace with Financial Modeling Prep (FMP) free API
+   - FMP signup: financialmodelingprep.com (free tier: 250 calls/day)
+
+2. [HIGH] Backtest save button unreliable in some sessions
+   - Root cause: st.rerun() was interrupting save_backtest() before SQLite commit
+   - Current fix: direct save_backtest() call in button handler + Refresh button
+   - If still broken: check data/backtests.db row count via:
+     sqlite3 data/backtests.db "SELECT COUNT(*) FROM pairs_backtests;"
+
+3. [MEDIUM] Alpaca IEX feed missing some tickers
+   - IEX is a subset of all US equities
+   - Some smaller/OTC tickers return empty data → falls back to synthetic
+   - Fix: use SIP feed (requires Alpaca paid plan) or filter asset list to IEX-only tickers
+
+4. [MEDIUM] Home page metrics show N/A on first load sometimes
+   - Happens when Alpaca returns only 1 bar (not enough for delta calc)
+   - Fetches 1mo data now to ensure >= 2 bars — should be resolved
+   - If still happening: check Alpaca API key is valid
+
+5. [LOW] financial_dashboard.py still exists in pages/ but is not registered
+   in navigation. Keep it as reference, do not delete.
+
+6. [LOW] No loading spinner when fetching ticker dropdown list
+   - fetch_asset_list() can take 2-3 seconds on first load
+   - Cached for 24 hours after first fetch
+
+
+VERSION 2.0 PLAN (not yet built)
+----------------------------------
+
+COMPLETED IN V1.5
+- Deployed to DigitalOcean Droplet (198.211.107.76)
+- HTTPS via DuckDNS + Let's Encrypt + nginx
+- GitHub repo live: github.com/Sribaru45/quant-finance-dashboard
+- SQLite persists on Droplet (no Supabase migration needed unless hosting changes)
+
+REMAINING BUG FIXES
+- Fix Value Investing fundamentals with FMP API (HIGH priority)
+- Fix backtest save reliability (HIGH priority)
+
+MODULE ENHANCEMENTS
+- Credit Risk: batch loan screening mode
+- Risk Analytics: rolling VaR over time, stress testing scenarios
+- Options: payoff diagram, multi-leg strategy builder (covered call, straddle, etc.)
+- Portfolio Opt: correlation heatmap, rebalancing calculator
+- Pairs Trading: history performance charts, multi-pair comparison
+- Value Screener: FMP fundamentals, DCF valuation model
+
+NEW MODULES CONSIDERED
+- Macro Dashboard: yield curve, Fed rates, inflation data
+- Earnings Calendar
+- Portfolio tracker with actual position tracking
+- Pantry app integration as a sidebar tab (currently stopped on Droplet in Docker)
+
+
+DEPENDENCIES (requirements.txt)
+---------------------------------
+streamlit==1.45.1
+plotly==5.24.1
+pandas==2.2.3
+numpy==1.26.4
+scipy==1.13.1
+scikit-learn==1.5.2
+statsmodels==0.14.4
+yfinance==0.2.50
+requests==2.32.3
+alpaca-py==0.40.1
+
+
+HOW TO RESTART THE APP LOCALLY
+--------------------------------
+pkill -f "streamlit run" && cd /Users/srirambharadwaj/Documents/projects/Portfolio && streamlit run app.py
+
+
+HOW TO RESTART THE APP ON SERVER
+----------------------------------
+ssh root@198.211.107.76 "systemctl restart portfolio"
+
+
+HOW TO CHECK THE DATABASE (local)
+-----------------------------------
+sqlite3 /Users/srirambharadwaj/Documents/projects/Portfolio/data/backtests.db
+> SELECT * FROM pairs_backtests;
+> .quit
+
+HOW TO CHECK THE DATABASE (server)
+------------------------------------
+ssh root@198.211.107.76 "sqlite3 /root/portfolio/data/backtests.db 'SELECT * FROM pairs_backtests;'"
+
+
+GIT WORKFLOW
+------------
+Local repo:   /Users/srirambharadwaj/Documents/projects/Portfolio/
+Remote:       git@github.com:Sribaru45/quant-finance-dashboard.git
+Branch:       main
+Last known commit: "Add live demo link and fix repo URL in README"
+
+Push changes:
+  git add <files>
+  git commit -m "message"
+  git push
+
+Deploy to server after push:
+  ssh root@198.211.107.76 "cd /root/portfolio && git pull && systemctl restart portfolio"
+
+Note: Server does not yet have GitHub SSH key configured — git pull on server
+requires setting up SSH key or switching remote to HTTPS with token.
+Alternative: use rsync to push directly:
+  rsync -av --exclude='.streamlit' --exclude='__pycache__' \
+    /Users/srirambharadwaj/Documents/projects/Portfolio/ root@198.211.107.76:/root/portfolio/
+  ssh root@198.211.107.76 "systemctl restart portfolio"
+
+================================================================================
+END OF HANDOFF DOCUMENT
+================================================================================
