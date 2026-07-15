@@ -1,0 +1,246 @@
+================================================================================
+FINANCIAL ANALYTICS PLATFORM — DESIGN BRIEF
+================================================================================
+Owner:      Sriram Bharadwaj
+Live App:   https://srirambharadwaj.duckdns.org
+GitHub:     https://github.com/Sribaru45/quant-finance-dashboard
+Source:     utils/styling.py (single source of truth for all styles)
+================================================================================
+
+PURPOSE OF THIS FILE
+--------------------
+This document defines every visual and UX decision in the platform. It is
+designed to be loaded into Claude (or any AI assistant) to rebuild, extend, or
+redesign the UI without needing to inspect the code. All CSS, layout rules,
+component patterns, and chart standards are recorded here.
+
+
+DESIGN PHILOSOPHY
+-----------------
+Aesthetic:    Bloomberg terminal meets modern dark UI — dense, data-first,
+              professional. No decorative elements. Every pixel earns its place.
+Audience:     Capital markets recruiters, risk analysts, quant PMs. The UI
+              should communicate technical credibility at a glance.
+Tone:         Serious, precise, minimal. No gradients except the module header
+              banner. No rounded corners beyond 8px. No animations except
+              card hover transitions.
+Framework:    Streamlit 1.45.1 with custom CSS injected via st.markdown()
+              unsafe_allow_html=True. All styles live in utils/styling.py.
+              Global CSS is applied on every page via apply_global_css(st).
+
+
+COLOR PALETTE
+-------------
+All colors are hardcoded as constants in utils/styling.py.
+
+Name              Hex         Usage
+---------         -------     --------------------------------------------------
+BG_COLOR          #0E1117     Main app background, chart backgrounds
+SIDEBAR_COLOR     #1C1C2E     Sidebar, metric cards, module cards, chart legend bg
+BORDER_COLOR      #2D2D44     All borders: cards, dividers, chart legend, hr
+ACCENT            #00D4AA     Primary teal: buttons, metric values, card headings,
+                              module header left border, hover states, links
+ACCENT_HOVER      #00b891     Button hover state (darker teal)
+DANGER            #FF6B6B     Error cards, danger indicators
+DANGER_BG         #2D1C1C     Error card background
+TEXT_COLOR        #FFFFFF     Primary text, headings, chart font
+SUBTEXT_COLOR     #A0AEC0     Labels, descriptions, secondary text, metric labels,
+                              input labels, sidebar footer, module card body text
+
+
+TYPOGRAPHY
+----------
+Headings (h1, h2, h3):   'Courier New', monospace — color #FFFFFF
+Body text:                Streamlit default (sans-serif)
+Input labels:             0.85rem, uppercase, letter-spacing 0.04em, #A0AEC0
+Metric labels:            0.75rem, uppercase, letter-spacing 0.05em, #A0AEC0
+Metric values:            1.4rem, font-weight 700, #00D4AA
+Module card headings:     0.95rem, #00D4AA
+Module card body:         0.82rem, #A0AEC0
+Module header title:      1.6rem, #FFFFFF, Courier New
+Module header subtitle:   0.9rem, #A0AEC0
+Sidebar footer:           0.75rem, #A0AEC0
+Chart font:               Courier New, #FFFFFF (applied via PLOTLY_LAYOUT)
+Chart title:              size 16, #FFFFFF
+
+
+PAGE LAYOUT
+-----------
+All module pages follow a strict 70/30 two-column split:
+  col_main, col_params = st.columns([7, 3])
+  - col_main (70%):   Analysis output — charts, tables, results, metrics
+  - col_params (30%): Parameters panel — all user inputs, sliders, selects
+
+Navigation:
+  - st.navigation() with sidebar_left=True
+  - Pages registered in app.py in this order:
+      Home, Credit Risk, Risk Analytics, Options Pricing,
+      Portfolio Optimization, Pairs Trading, Value Investing
+  - Streamlit branding hidden (#MainMenu, footer, header all visibility:hidden)
+
+Sidebar footer (every page):
+  - Fixed to bottom of sidebar
+  - "Built by Sriram Bharadwaj | GitHub | LinkedIn"
+  - Called via sidebar_footer(st) from utils/styling.py
+
+
+COMPONENTS
+----------
+
+1. MODULE HEADER BANNER
+   Used at the top of every module page.
+   Called via: module_header(st, icon, title, description)
+
+   Visual spec:
+   - Background: linear-gradient(90deg, #1C1C2E 0%, #0E1117 100%)
+   - Left border: 4px solid #00D4AA
+   - Border radius: 0 6px 6px 0 (only right side rounded)
+   - Padding: 1rem 1.5rem
+   - Margin bottom: 1.5rem
+   - Title: emoji icon + text, 1.6rem, Courier New, #FFFFFF
+   - Subtitle: 0.9rem, #A0AEC0
+
+   Example usage:
+     module_header(st, "📉", "Credit Risk Model", "PD / LGD / Expected Loss")
+
+2. METRIC CARDS
+   Streamlit st.metric() components, styled via CSS targeting stMetric.
+
+   Visual spec:
+   - Background: #1C1C2E
+   - Border: 1px solid #2D2D44
+   - Border radius: 8px
+   - Padding: 12px 16px
+   - Value: 1.4rem, font-weight 700, #00D4AA
+   - Label: 0.75rem, uppercase, letter-spacing 0.05em, #A0AEC0
+   - Delta arrow SVG hidden (display:none)
+
+3. MODULE CARDS (Home page only)
+   Clickable cards in the home page module grid.
+
+   Visual spec:
+   - Background: #1C1C2E
+   - Border: 1px solid #2D2D44 (default) → #00D4AA on hover
+   - Border radius: 8px
+   - Padding: 1rem 1.25rem
+   - Margin bottom: 0.75rem
+   - Transition: border-color 0.2s
+   - Heading: 0.95rem, #00D4AA
+   - Body: 0.82rem, #A0AEC0
+   - Navigation: st.page_link() wraps each card
+
+4. ERROR CARD
+   Used when data fetch fails or inputs are invalid.
+   Called via: error_card(st, message, suggestion="")
+
+   Visual spec:
+   - Background: #2D1C1C
+   - Border: 1px solid #FF6B6B
+   - Border radius: 8px
+   - Padding: 1rem 1.25rem
+   - "Error:" label in #FF6B6B bold
+   - Suggestion text in #A0AEC0
+
+5. BUTTONS
+   All Streamlit st.button() components inherit this style.
+
+   Visual spec:
+   - Background: #00D4AA
+   - Text color: #0E1117 (dark on teal)
+   - Font weight: 600
+   - Border: none
+   - Border radius: 6px
+   - Hover background: #00b891
+
+6. INPUT LABELS
+   All st.selectbox, st.slider, st.number_input, st.text_input labels.
+
+   Visual spec:
+   - Color: #A0AEC0
+   - Font size: 0.85rem
+   - Text transform: uppercase
+   - Letter spacing: 0.04em
+
+7. DIVIDERS
+   hr elements styled with border-color: #2D2D44
+
+8. ALERT BOXES
+   Streamlit st.info(), st.warning(), st.error() — border-radius: 6px only.
+   No custom color overrides; use Streamlit defaults.
+
+9. SIDEBAR FOOTER
+   Called via: sidebar_footer(st) on every page.
+
+   Visual spec:
+   - Position: fixed, bottom 1rem, left 0
+   - Width: 16rem
+   - Padding: 0.75rem 1rem
+   - Border top: 1px solid #2D2D44
+   - Text: 0.75rem, #A0AEC0
+   - Links (GitHub, LinkedIn): #00D4AA, no underline → underline on hover
+
+
+CHART STANDARDS
+---------------
+All charts use Plotly. The global layout dict is defined in utils/styling.py
+as PLOTLY_LAYOUT and must be spread into every fig.update_layout() call:
+  fig.update_layout(**PLOTLY_LAYOUT)
+
+PLOTLY_LAYOUT spec:
+  template:       "plotly_dark"
+  paper_bgcolor:  "#0E1117"
+  plot_bgcolor:   "#0E1117"
+  font:           color="#FFFFFF", family="Courier New"
+  title_font:     color="#FFFFFF", size=16
+  legend:         bgcolor="#1C1C2E", bordercolor="#2D2D44", borderwidth=1
+  margin:         l=40, r=20, t=50, b=40
+
+Chart color usage:
+  - Primary series:   #00D4AA (teal accent)
+  - Danger/loss:      #FF6B6B (red)
+  - Neutral/secondary: #A0AEC0 (subtext grey)
+  - Additional series: use Plotly dark palette defaults
+
+Chart types used per module:
+  Home:             Line chart (SPY price)
+  Credit Risk:      Gauge (risk score), Bar (feature importance),
+                    Histogram (PD distribution)
+  Risk Analytics:   Histogram (return distribution), Line fan (Monte Carlo),
+                    Line (cumulative returns)
+  Options Pricing:  Bar (Greeks), Line (Delta+Price vs Spot),
+                    Heatmap x2 (Price×Vol, Delta×Vol)
+  Portfolio Opt:    Scatter (efficient frontier), Bar (weights)
+  Pairs Trading:    Line+scatter (z-score with trade markers), Line (P&L)
+  Value Investing:  Line (cumulative returns), Bar x2 (weights, individual returns)
+
+
+STREAMLIT CONFIG
+----------------
+Streamlit's own UI chrome is hidden on all pages:
+  #MainMenu { visibility: hidden; }
+  footer     { visibility: hidden; }
+  header     { visibility: hidden; }
+
+This is applied globally in GLOBAL_CSS, injected on every page load.
+
+
+HOW TO APPLY THE DESIGN SYSTEM
+--------------------------------
+Every page must do the following at the top:
+
+  import streamlit as st
+  from utils.styling import apply_global_css, module_header, error_card, sidebar_footer, PLOTLY_LAYOUT
+
+  apply_global_css(st)                              # inject all CSS
+  module_header(st, "🔣", "Page Title", "Subtitle") # top banner
+  # ... page content ...
+  sidebar_footer(st)                                 # bottom of sidebar
+
+All charts:
+  fig = go.Figure(...)
+  fig.update_layout(**PLOTLY_LAYOUT, title="Chart Title")
+  st.plotly_chart(fig, use_container_width=True)
+
+================================================================================
+END OF DESIGN BRIEF
+================================================================================
