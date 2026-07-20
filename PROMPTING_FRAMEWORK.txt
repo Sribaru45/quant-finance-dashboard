@@ -1,0 +1,367 @@
+================================================================================
+FINANCIAL ANALYTICS PLATFORM — PROMPTING FRAMEWORK
+================================================================================
+Owner:      Sriram Bharadwaj
+Live App:   https://srirambharadwaj.duckdns.org
+GitHub:     https://github.com/Sribaru45/quant-finance-dashboard
+================================================================================
+
+PURPOSE OF THIS FILE
+--------------------
+This document defines how to work with Claude (or any AI assistant) on this
+project. It covers what context to load, how to structure prompts, and how to
+run each type of session. Following this framework ensures accuracy, consistency
+with the existing codebase, and efficient use of tokens.
+
+Load this file alongside PROJECT_HANDOFF.txt at the start of any session.
+
+
+================================================================================
+SESSION OPENER — USE THIS EVERY TIME
+================================================================================
+
+Paste this at the start of every new Claude session before saying anything else:
+
+---
+Read these files before doing anything:
+1. /Users/srirambharadwaj/Documents/projects/Portfolio/PROJECT_HANDOFF.txt
+2. /Users/srirambharadwaj/Documents/projects/Portfolio/PROMPTING_FRAMEWORK.txt
+
+Confirm you have read both, then wait for my instructions.
+---
+
+This ensures Claude has full project context and knows the rules before acting.
+Do not skip this step. Do not give instructions before context is loaded.
+
+
+================================================================================
+CONTEXT LOADING RULES
+================================================================================
+
+FIXED CORE — load in every session, no exceptions
+--------------------------------------------------
+These files are small and their absence causes silent bugs or style drift.
+
+  PROJECT_HANDOFF.txt          Full project context, deployment, known bugs
+  utils/helpers.py             Alpaca client, all data fetch functions
+  utils/styling.py             All colors, CSS, PLOTLY_LAYOUT, component funcs
+  utils/db.py                  SQLite helpers for backtest persistence
+
+Combined cost: ~10,000 tokens. Always worth it.
+
+VARIABLE CONTEXT — load based on session type
+---------------------------------------------
+  DESIGN_BRIEF.txt             Any session involving UI, layout, or charts
+  The specific module file     BUILD and DEBUG sessions only
+  One reference module         PLAN sessions only (pick most similar module)
+  utils/helpers.py chain       DEBUG sessions involving API or data flow
+
+NEVER LOAD
+----------
+  All 6 module files at once
+  Modules unrelated to the current task
+  Full git history
+
+EFFICIENCY PRINCIPLE
+--------------------
+The token savings do not come from loading fewer fixed files.
+They come from never letting Claude re-derive what is already documented.
+
+The handoff doc, design brief, and this file answer:
+  - How the project is structured
+  - What design decisions have been made
+  - What bugs exist and how they were addressed
+  - How to deploy changes
+
+Claude should never ask about these things. If it does, point it to the file.
+
+
+================================================================================
+THE FIVE SESSION TYPES
+================================================================================
+
+--------------------------------------------------------------------------------
+SESSION TYPE 1 — ORIENT
+--------------------------------------------------------------------------------
+Purpose:   Load context, understand current state, decide what to work on.
+           No code is written in this session.
+When:      Start of any new topic, after a long break, or when resuming
+           work after changes were made outside of Claude.
+
+Context to load:
+  Fixed core only (PROJECT_HANDOFF.txt + utils/*)
+
+Prompt template:
+---
+I want to work on [topic/area].
+
+Based on the handoff doc, tell me:
+1. What already exists that is relevant to this
+2. Which files will need to change
+3. What information you need from me before we can start
+
+Do not write any code yet.
+---
+
+Rules:
+  - No code in ORIENT sessions. Planning only.
+  - If Claude starts writing code, stop it and redirect.
+  - End this session by deciding which session type comes next.
+
+
+--------------------------------------------------------------------------------
+SESSION TYPE 2 — PLAN
+--------------------------------------------------------------------------------
+Purpose:   Produce a written spec before any code is written.
+           The spec becomes a permanent entry in PROJECT_HANDOFF.txt.
+When:      Before building any new module, major feature, or test suite.
+
+Context to load:
+  Fixed core + DESIGN_BRIEF.txt + one reference module (most similar to
+  what is being planned)
+
+Prompt template:
+---
+I want to build [module/feature name].
+
+Here is what it should do:
+
+INPUTS (user controls — these go in the right 30% column):
+- [input name]: [type — slider/selectbox/number] — range [min to max]
+- [repeat for each input]
+
+OUTPUTS (results — these go in the left 70% column):
+- [metric/chart/table name]: [what it shows]
+- [repeat for each output]
+
+MATH / LOGIC:
+- [describe the core calculation in plain English]
+- [list any libraries to use: scipy, statsmodels, sklearn, etc.]
+
+DATA SOURCE:
+- [Alpaca via fetch_price_history() / yfinance / hardcoded / user input]
+
+Using the reference module as a structural guide and the design brief for
+all styling decisions, write a spec for this module. Include:
+  - File name and location
+  - Column layout plan (what goes left, what goes right)
+  - List of functions needed and what each does
+  - Chart types and what data they show
+  - Any new dependencies required
+
+Do not write implementation code. Write the spec only.
+---
+
+Output:
+  Copy the spec Claude produces and paste it into PROJECT_HANDOFF.txt
+  under a new section before starting any BUILD session.
+  This spec is the build contract — Claude must not deviate from it.
+
+Rules:
+  - No code in PLAN sessions. Spec only.
+  - If the spec looks wrong, correct it in the chat before saving.
+  - Only start BUILD after the spec is in PROJECT_HANDOFF.txt.
+
+
+--------------------------------------------------------------------------------
+SESSION TYPE 3 — BUILD
+--------------------------------------------------------------------------------
+Purpose:   Write or modify code for one specific file or component.
+When:      After a PLAN session has produced a spec in PROJECT_HANDOFF.txt.
+
+Context to load:
+  Fixed core + DESIGN_BRIEF.txt + the file being built
+
+Prompt template:
+---
+Build [specific thing — e.g. "pages/fixed_income.py" or "the Greeks bar
+chart in pages/options_pricing.py" or "the smoke test script"].
+
+The spec for this is in PROJECT_HANDOFF.txt under [section name].
+
+Constraints — follow these exactly:
+  - Implement only what the spec describes. No extra features.
+  - Follow DESIGN_BRIEF.txt for all styling decisions.
+  - Use PLOTLY_LAYOUT from utils/styling.py for every chart.
+  - Use 70/30 column split: outputs left, inputs right.
+  - Use fetch_price_history() and other helpers from utils/helpers.py.
+  - Do not add comments unless the logic is genuinely non-obvious.
+  - Do not add error handling beyond what the spec describes.
+---
+
+Scope rules:
+  - One file per BUILD session maximum.
+  - If a session exceeds ~30 exchanges, open a new BUILD session and
+    load the current state of the file as context.
+  - Always end a BUILD session with a CLOSE session.
+
+Mid-session correction template (use when Claude drifts):
+---
+Stop. You have added [describe what was added] which was not in the spec.
+Remove it and continue with only what the spec describes.
+---
+
+
+--------------------------------------------------------------------------------
+SESSION TYPE 4 — DEBUG
+--------------------------------------------------------------------------------
+Purpose:   Find and fix one specific, named problem.
+When:      Something is broken. Always describe the exact failure before
+           loading any files.
+
+Context to load:
+  Fixed core + the broken file
+  Add utils/helpers.py call chain if the bug involves API or data flow.
+
+Prompt template:
+---
+Something is broken. Here is the exact problem:
+
+WHAT IS BROKEN: [one sentence]
+
+STEPS TO REPRODUCE:
+1. Go to [module name]
+2. Set [input] to [value]
+3. Click [action]
+
+WHAT ACTUALLY HAPPENS: [exact error message or wrong output value]
+WHAT SHOULD HAPPEN: [expected output]
+
+THE BROKEN FILE: [file path]
+
+Find the root cause. Fix only that. Do not refactor surrounding code.
+Do not change anything outside the scope of this bug.
+---
+
+Debug escalation rules:
+  - If not fixed after 3 attempts in the same session, stop.
+  - Open a new DEBUG session with a reframed problem description.
+  - Reframing often reveals the real root cause.
+  - If still stuck after reframing, load the full data flow chain
+    (page file + helpers.py + relevant API response).
+
+Never do this:
+  - "Here's the whole file, find the bug" without isolating first
+  - "It doesn't work" without the exact wrong output
+  - Accepting a fix without verifying it against the reproduce steps
+
+
+--------------------------------------------------------------------------------
+SESSION TYPE 5 — CLOSE
+--------------------------------------------------------------------------------
+Purpose:   Lock in completed work, update docs, push to GitHub, deploy to
+           server. Run at the end of every BUILD or DEBUG session.
+When:      Immediately after completing any code change.
+
+Context to load:
+  PROJECT_HANDOFF.txt only
+
+Prompt template:
+---
+We just completed: [one sentence description of what was built or fixed]
+
+Do the following in order:
+1. Update PROJECT_HANDOFF.txt:
+   - If a new module: add its full spec under THE 6 MODULES section
+   - If a bug fixed: mark it resolved in KNOWN BUGS with date
+   - If deployment changed: update the DEPLOYMENT section
+2. Commit and push to GitHub:
+   git add [specific files]
+   git commit -m "[description]"
+   git push
+3. Deploy to server:
+   rsync -av --exclude='.streamlit' --exclude='__pycache__' \
+     /Users/srirambharadwaj/Documents/projects/Portfolio/ \
+     root@198.211.107.76:/root/portfolio/
+   ssh root@198.211.107.76 "systemctl restart portfolio"
+4. Verify the live app is responding at https://srirambharadwaj.duckdns.org
+---
+
+Rules:
+  - Never end a working session without running CLOSE.
+  - Undocumented work is lost work — always update PROJECT_HANDOFF.txt.
+  - Always deploy after every merged change. Never leave local and server
+    out of sync.
+
+
+================================================================================
+ACCURACY VS EFFICIENCY — THE BALANCE
+================================================================================
+
+Where efficiency wins:
+  - Do not load all 6 modules when working on one
+  - Do not load DESIGN_BRIEF.txt for pure logic/math fixes
+  - Do not load unrelated modules as reference
+
+Where accuracy wins (do not cut these):
+  - Always load the full fixed core (utils/* files are small, omitting
+    them causes silent bugs and inconsistent patterns)
+  - Always load DESIGN_BRIEF.txt for any visual or layout change
+  - For bugs in the data flow, load the full chain — not just the page file
+
+The core principle:
+  Tokens spent loading documented context = cheap.
+  Tokens spent re-deriving documented decisions = waste.
+  Tokens spent debugging consistency errors from missing context = expensive.
+
+
+================================================================================
+ANTI-PATTERNS — WHAT NOT TO DO
+================================================================================
+
+1. Starting with code before context
+   Wrong:  "Write me a fixed income module"
+   Right:  Load files → ORIENT → PLAN → BUILD
+
+2. Asking Claude to find a bug without showing the wrong output
+   Wrong:  "The pairs trading module is broken, fix it"
+   Right:  "When I set ticker 1=AAPL, ticker 2=MSFT, the z-score shows NaN.
+            Expected: a numeric value between -3 and 3."
+
+3. Letting Claude add features beyond the spec
+   Wrong:  Accepting code that has extra error handling, comments, or UI
+           elements not in the spec
+   Right:  Stop it immediately and ask it to remove the addition
+
+4. Skipping CLOSE at the end of a session
+   Wrong:  Finishing a build and closing the terminal
+   Right:  Always run CLOSE — update docs, commit, deploy, verify
+
+5. Building without a spec
+   Wrong:  Going straight from idea to BUILD session
+   Right:  PLAN session first, spec in PROJECT_HANDOFF.txt, then BUILD
+
+6. Running a long session without checkpointing
+   Wrong:  30+ exchange BUILD session with no commits
+   Right:  Commit working code every time a component is complete,
+           even mid-session
+
+
+================================================================================
+QUICK REFERENCE — SESSION SELECTOR
+================================================================================
+
+What do I want to do?                          Use session type
+----------------------------------------------  ----------------------
+Understand what exists / plan what's next       ORIENT
+Design a new module or feature before coding    PLAN
+Write or modify code                            BUILD
+Fix something broken                            DEBUG
+Save, document, deploy completed work           CLOSE
+
+
+================================================================================
+FILE LOCATIONS
+================================================================================
+
+Project root:     /Users/srirambharadwaj/Documents/projects/Portfolio/
+Handoff doc:      PROJECT_HANDOFF.txt
+Design brief:     DESIGN_BRIEF.txt
+This file:        PROMPTING_FRAMEWORK.txt
+Server:           root@198.211.107.76:/root/portfolio/
+Live URL:         https://srirambharadwaj.duckdns.org
+GitHub:           https://github.com/Sribaru45/quant-finance-dashboard
+
+================================================================================
+END OF PROMPTING FRAMEWORK
+================================================================================
