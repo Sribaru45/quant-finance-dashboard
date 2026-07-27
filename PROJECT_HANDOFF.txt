@@ -15,6 +15,11 @@ be loaded into Claude (or any AI assistant) as a prompt context to continue
 developing, debugging, or fully rebuilding the platform from scratch. Every
 decision, convention, credential reference, and known issue is recorded here.
 
+COMPANION DOCUMENTS (load alongside this file):
+  DESIGN_BRIEF.txt          All UI/UX decisions, colors, components, chart standards
+  PROMPTING_FRAMEWORK.txt   How to structure Claude sessions for this project
+                            Includes session opener, 5 session types, context rules
+
 
 PROJECT LOCATION
 ----------------
